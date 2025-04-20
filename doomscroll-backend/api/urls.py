@@ -1,0 +1,19 @@
+from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from . import views
+
+urlpatterns = [
+    path('register/', views.register_user),
+    path('login/', TokenObtainPairView.as_view()),
+    path('token/refresh/', TokenRefreshView.as_view()),
+
+    path('posts/', views.get_posts),
+    path('posts/create/', views.create_post),
+    path('myposts/', views.MyPostsView.as_view()),
+
+    path('comments/create/', views.create_comment),
+    path('posts/<int:post_id>/comments/', views.get_post_comments),
+
+    path('posts/<int:post_id>/like/', views.like_post),
+
+]
