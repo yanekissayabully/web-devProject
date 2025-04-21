@@ -16,4 +16,8 @@ urlpatterns = [
 
     path('posts/<int:post_id>/like/', views.like_post),
 
+    path('profile/me/', views.get_my_profile),
+    path('profile/update/', views.update_my_profile),
+    path('profile/<str:username>/', views.get_profile_by_username),
+
 ]

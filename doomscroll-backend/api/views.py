@@ -7,8 +7,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .models import Post, Comment
-from .serializers import PostSerializer, CommentSerializer, RegisterSerializer
+from .models import Post, Comment, Profile
+from django.contrib.auth.models import User
+from .serializers import PostSerializer, CommentSerializer, RegisterSerializer, ProfileSerializer
+
+
 
 # Регистрация
 @api_view(['POST'])
@@ -73,3 +76,31 @@ def like_post(request, post_id):
         return Response({'message': 'Liked!', 'likes': post.likes})
     except Post.DoesNotExist:
         return Response({'error': 'Post not found'}, status=404)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_profile(request):
+    profile = Profile.objects.get(user=request.user)
+    serializer = ProfileSerializer(profile)
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_my_profile(request):
+    profile = Profile.objects.get(user=request.user)
+    serializer = ProfileSerializer(profile, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
+
+@api_view(['GET'])
+def get_profile_by_username(request, username):
+    try:
+        user = User.objects.get(username=username)
+        profile = Profile.objects.get(user=user)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data)
+    except:
+        return Response({'error': 'User not found'}, status=404)
