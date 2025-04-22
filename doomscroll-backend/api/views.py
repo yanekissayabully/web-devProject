@@ -10,11 +10,14 @@ from rest_framework.views import APIView
 from .models import Post, Comment, Profile
 from django.contrib.auth.models import User
 from .serializers import PostSerializer, CommentSerializer, RegisterSerializer, ProfileSerializer
+from rest_framework.permissions import AllowAny
+
 
 
 
 # Регистрация
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -81,7 +84,7 @@ def like_post(request, post_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_my_profile(request):
-    profile = Profile.objects.get(user=request.user)
+    profile, created = Profile.objects.get_or_create(user=request.user)
     serializer = ProfileSerializer(profile)
     return Response(serializer.data)
 

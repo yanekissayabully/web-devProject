@@ -10,27 +10,46 @@ import { CommentsComponent } from '../comments/comments.component';
   standalone: true,
   imports: [CommonModule, FormsModule, CommentsComponent],
   template: `
-    <h2>DOOMSCROLL FEED</h2>
+  <h2>💀 DOOMSCROLL FEED</h2>
 
+  <div class="new-post">
     <textarea [(ngModel)]="newPost" placeholder="Что происходит?.."></textarea>
-    <br>
     <button (click)="createPost()">Опубликовать</button>
+  </div>
 
-    <hr>
-
-    <div *ngFor="let post of posts" class="fade-in">
-      <p><strong>{{ post.author.username }}</strong>: {{ post.content }}</p>
-      <p>❤️ {{ post.likes }}</p>
-      <button (click)="like(post.id)">Like</button>
-      <app-comments [postId]="post.id"></app-comments>
-      <hr>
+  <div *ngFor="let post of posts" class="post-card">
+    <div class="post-header">
+      <strong>{{ post.author.username }}</strong>
+      <span class="timestamp">{{ post.created_at | date:'short' }}</span>
     </div>
-  `
+    <div class="post-content">
+      {{ post.content }}
+    </div>
+
+    <div class="post-actions">
+      <span>❤️ {{ post.likes }}</span>
+      <button (click)="like(post.id)">Like</button>
+    </div>
+
+    <div *ngIf="post.comments?.length">
+      <p class="comment-header">💬 Комментарии:</p>
+      <div *ngFor="let comment of post.comments" class="comment">
+        <strong>{{ comment.author.username }}:</strong> {{ comment.text }}
+      </div>
+    </div>
+
+    <div class="comment-form">
+      <textarea [(ngModel)]="commentTexts[post.id]" placeholder="Оставь комментарий..."></textarea>
+      <button (click)="comment(post.id)">Отправить</button>
+    </div>
+  </div>
+`
+
 })
 export class PostsComponent implements OnInit {
   posts: any[] = [];
   newPost: string = '';
-
+  commentTexts: {[postId: number]: string} = {};
   constructor(private api: ApiService) {}
 
   ngOnInit() {
@@ -60,5 +79,15 @@ export class PostsComponent implements OnInit {
 
   like(postId: number) {
     this.api.likePost(postId).subscribe(() => this.loadPosts());
+  }
+
+  comment(postId: number){
+    const text = this.commentTexts[postId];
+    if (!text?.trim()) return;
+
+    this.api.createComment(postId, text).subscribe(() => {
+      this.commentTexts[postId] = '';
+      this.loadPosts();
+    });
   }
 }
