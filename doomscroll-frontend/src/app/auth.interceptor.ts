@@ -1,30 +1,19 @@
-import { Injectable } from '@angular/core';
-import {
-  HttpRequest,
-  HttpHandler,
-  HttpEvent,
-  HttpInterceptor
-} from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpInterceptorFn } from '@angular/common/http';
 
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const accessToken = localStorage.getItem('access');
 
-  intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const accessToken = localStorage.getItem('access');
-
-    // НЕ вставляем токен в login и register
-    if (/\/api\/(login|register)(\/|$)/.test(request.url)) {
-      return next.handle(request);
-    }
-
-    if (accessToken) {
-      const cloned = request.clone({
-        headers: request.headers.set('Authorization', `Bearer ${accessToken}`)
-      });
-      return next.handle(cloned);
-    }
-
-    return next.handle(request);
+  if (/\/api\/(login|register)(\/|$)/.test(req.url)) {
+    console.warn('⚠️ NO TOKEN ADDED FOR:', req.url);
+    return next(req); // НЕ добавляем токен
   }
-}
+
+  if (accessToken) {
+    const cloned = req.clone({
+      headers: req.headers.set('Authorization', `Bearer ${accessToken}`)
+    });
+    return next(cloned);
+  }
+
+  return next(req);
+};

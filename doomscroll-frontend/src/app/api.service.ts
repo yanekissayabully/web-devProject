@@ -22,15 +22,20 @@ export class ApiService {
   }
 
   register(username: string, password: string) {
-    return this.http.post(this.baseUrl + 'register/', { username, password });
+    return this.http.post('http://127.0.0.1:8000/api/register/', {
+      username,
+      password
+    }); // никакой Authorization
   }
+  
+  
 
   getPosts() {
     return this.http.get<any[]>(this.baseUrl + 'posts/');
   }
 
   likePost(postId: number) {
-    return this.http.post(this.baseUrl + `post/${postId}/like/`, {});
+    return this.http.post(this.baseUrl + `posts/${postId}/like/`, {});
   }
 
   createPost(content: string) {
@@ -53,8 +58,16 @@ export class ApiService {
   }
 
   updateMyProfile(profile: any) {
-    return this.http.put(this.baseUrl + 'profile/update/', profile);
+    const formData = new FormData();
+    formData.append('bio', profile.bio);
+    formData.append('doom_level', profile.doom_level);
+    if (profile.avatar) {
+      formData.append('avatar', profile.avatar);
+    }
+  
+    return this.http.put(this.baseUrl + 'profile/update/', formData);
   }
+  
 
   getProfileByUsername(username: string) {
     return this.http.get(this.baseUrl + 'profile/' + username + '/');
