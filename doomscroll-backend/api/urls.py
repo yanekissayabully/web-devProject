@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     # Auth
-    path('register/', RegisterUserView.as_view()),
+    path('register/', RegisterUserView.as_view(), name='register'),
     path('login/', TokenObtainPairView.as_view(permission_classes=[AllowAny]), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
@@ -26,4 +26,10 @@ urlpatterns = [
     path('profile/me/', views.get_my_profile, name='my_profile'),
     path('profile/update/', views.update_my_profile, name='update_profile'),
     path('profile/<str:username>/', views.get_profile_by_username, name='profile_by_username'),
+    path('profile/<str:username>/follows/', views.get_follow_counts, name='follow_counts'),
+
+    # Follows
+    path('follow/<str:username>/', views.follow_user, name='follow_user'),
+    path('unfollow/<str:username>/', views.unfollow_user, name='unfollow_user'),
+    path('follow/<str:username>/check/', views.check_follow_status, name='check_follow_status'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

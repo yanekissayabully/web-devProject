@@ -3,9 +3,18 @@ from django.contrib.auth.models import User
 from .models import Post, Comment, Profile
 
 class UserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username']
+        fields = ['id', 'username', 'avatar']
+
+    def get_avatar(self, obj):
+        try:
+            return obj.profile.avatar.url if obj.profile.avatar else None
+        except Profile.DoesNotExist:
+            return None
+
 
 #posti
 class PostSerializer(serializers.ModelSerializer):
@@ -36,10 +45,19 @@ class CommentSerializer(serializers.ModelSerializer):
 #profil
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'bio', 'doom_level','avatar']
+        fields = ['id', 'user', 'bio', 'doom_level','avatar', 'followers_count', 'following_count']
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()
+
 
 #rega
 class RegisterSerializer(serializers.ModelSerializer):

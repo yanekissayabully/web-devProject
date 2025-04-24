@@ -10,6 +10,7 @@ class Profile(models.Model):
     bio = models.TextField(blank=True)
     doom_level = models.IntegerField(default=0)
     avatar = models.ImageField(upload_to=upload_avatar, blank=True, null=True)
+    followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
 
     def __str__(self):
         return self.user.username
@@ -42,3 +43,16 @@ class Like(models.Model):
 
     def __str__(self):
         return f'{self.user.username} liked post {self.post.id}'
+
+
+class Follow(models.Model):
+    follower = models.ForeignKey(User, related_name='following', on_delete=models.CASCADE)
+    following = models.ForeignKey(User, related_name='followers', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('follower', 'following')
+
+    def __str__(self):
+        return f'{self.follower.username} → {self.following.username}'
+

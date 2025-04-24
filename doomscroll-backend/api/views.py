@@ -16,7 +16,7 @@ from django.utils.decorators import method_decorator
 from .models import Like
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import parser_classes
-
+from .models import Follow
 
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterUserView(APIView):
@@ -117,4 +117,50 @@ def get_profile_by_username(request, username):
         serializer = ProfileSerializer(profile)
         return Response(serializer.data)
     except:
+        return Response({'error': 'User not found'}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def follow_user(request, username):
+    try:
+        to_follow = User.objects.get(username=username)
+        if to_follow == request.user:
+            return Response({'error': 'Нельзя подписаться на самого себя'}, status=400)
+        Follow.objects.get_or_create(follower=request.user, following=to_follow)
+        return Response({'message': f'Подписка на {username} успешна'})
+    except User.DoesNotExist:
+        return Response({'error': 'Пользователь не найден'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unfollow_user(request, username):
+    try:
+        to_unfollow = User.objects.get(username=username)
+        Follow.objects.filter(follower=request.user, following=to_unfollow).delete()
+        return Response({'message': f'Отписка от {username} успешна'})
+    except User.DoesNotExist:
+        return Response({'error': 'Пользователь не найден'}, status=404)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_follow_counts(request, username):
+    try:
+        user = User.objects.get(username=username)
+        followers = Follow.objects.filter(following=user).count()
+        following = Follow.objects.filter(follower=user).count()
+        return Response({'followers': followers, 'following': following})
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_follow_status(request, username):
+    try:
+        user = User.objects.get(username=username)
+        is_following = Follow.objects.filter(follower=request.user, following=user).exists()
+        return Response({'is_following': is_following})
+    except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)

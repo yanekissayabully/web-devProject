@@ -10,8 +10,13 @@ import { ApiService } from '../api.service';
   template: `
     <div *ngIf="comments.length > 0">
       <h4>Комментарии:</h4>
-      <div *ngFor="let comment of comments">
-        <p><strong>{{ comment.author.username }}</strong>: {{ comment.text }}</p>
+      <div *ngFor="let comment of comments" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <img *ngIf="comment.author.avatar"
+             [src]="'http://127.0.0.1:8000' + comment.author.avatar"
+             width="28"
+             height="28"
+             style="border-radius: 50%;" />
+        <p style="margin: 0;"><strong>{{ comment.author.username }}</strong>: {{ comment.text }}</p>
       </div>
     </div>
 

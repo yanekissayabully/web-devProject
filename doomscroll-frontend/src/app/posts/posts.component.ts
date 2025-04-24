@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 import { CommentsComponent } from '../comments/comments.component';
+import { RouterModule } from '@angular/router';
 
 
 @Component({
   selector: 'app-posts',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommentsComponent],
+  imports: [CommonModule, FormsModule, CommentsComponent, RouterModule],
   template: `
   <h2>💀 DOOMSCROLL FEED</h2>
 
@@ -19,7 +20,11 @@ import { CommentsComponent } from '../comments/comments.component';
 
   <div *ngFor="let post of posts" class="post-card">
     <div class="post-header">
+    <img *ngIf="post.author.avatar" [src]="'http://127.0.0.1:8000' + post.author.avatar" width="32" height="32" style="border-radius: 50%; margin-right: 10px;" />
+    <a [routerLink]="['/profile', post.author.username]">
       <strong>{{ post.author.username }}</strong>
+    </a>
+
       <span class="timestamp">{{ post.created_at | date:'short' }}</span>
     </div>
     <div class="post-content">
@@ -33,9 +38,16 @@ import { CommentsComponent } from '../comments/comments.component';
 
     <div *ngIf="post.comments?.length">
       <p class="comment-header">💬 Комментарии:</p>
-      <div *ngFor="let comment of post.comments" class="comment">
-        <strong>{{ comment.author.username }}:</strong> {{ comment.text }}
-      </div>
+      <div *ngFor="let comment of post.comments" class="comment" style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+  <img *ngIf="comment.author.avatar" [src]="'http://127.0.0.1:8000' + comment.author.avatar" width="30" height="30" style="border-radius: 50%;" />
+  <div>
+  <a [routerLink]="['/profile', comment.author.username]">
+  <strong>{{ comment.author.username }}</strong>
+</a>
+ {{ comment.text }}
+  </div>
+</div>
+
     </div>
 
     <div class="comment-form">
