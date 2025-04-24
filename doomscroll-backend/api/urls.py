@@ -2,13 +2,13 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
 from . import views
-from .views import RegisterUserView
+from .views import register_user
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     # Auth
-    path('register/', RegisterUserView.as_view(), name='register'),
+    path('register/', register_user),
     path('login/', TokenObtainPairView.as_view(permission_classes=[AllowAny]), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
@@ -32,4 +32,12 @@ urlpatterns = [
     path('follow/<str:username>/', views.follow_user, name='follow_user'),
     path('unfollow/<str:username>/', views.unfollow_user, name='unfollow_user'),
     path('follow/<str:username>/check/', views.check_follow_status, name='check_follow_status'),
+
+    path('thread/create-or-get/<str:username>/', views.get_or_create_thread),
+    path('chat/messages/<int:thread_id>/', views.get_messages),
+    path('chat/messages/<int:thread_id>/send/', views.send_message),
+    path('thread/<str:username>/', views.get_or_create_thread, name='get_or_create_thread'),
+    path('follow/status/<str:username>/', views.check_follow_status, name='check_follow_status'),
+
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

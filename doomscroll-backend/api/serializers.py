@@ -1,7 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Post, Comment, Profile
+from .models import Post, Comment, Profile, Thread, Message
 
+# 🔹 Мини-сериалайзер для краткой инфы о юзере (для чатов и сообщений)
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username']
+
+# 🔹 Полный сериалайзер юзера (с аватаром)
 class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
 
@@ -15,8 +22,15 @@ class UserSerializer(serializers.ModelSerializer):
         except Profile.DoesNotExist:
             return None
 
+# 🔹 Сериалайзер комментария
+class CommentSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
 
-#posti
+    class Meta:
+        model = Comment
+        fields = ['id', 'post', 'author', 'text', 'created_at']
+
+# 🔹 Сериалайзер поста
 class PostSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     likes = serializers.SerializerMethodField()
@@ -24,7 +38,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'content', 'created_at', 'likes', 'comments']
+        fields = ['id', 'author', 'content', 'image', 'created_at', 'likes', 'comments']
 
     def get_likes(self, obj):
         return obj.like_set.count()
@@ -33,16 +47,7 @@ class PostSerializer(serializers.ModelSerializer):
         comments = Comment.objects.filter(post=obj).order_by('-created_at')
         return CommentSerializer(comments, many=True).data
 
-
-#comments
-class CommentSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Comment
-        fields = ['id', 'post', 'author', 'text', 'created_at']
-
-#profil
+# 🔹 Сериалайзер профиля
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     followers_count = serializers.SerializerMethodField()
@@ -50,7 +55,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'bio', 'doom_level','avatar', 'followers_count', 'following_count']
+        fields = ['id', 'user', 'bio', 'doom_level', 'avatar', 'followers_count', 'following_count']
 
     def get_followers_count(self, obj):
         return obj.followers.count()
@@ -58,8 +63,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_following_count(self, obj):
         return obj.following.count()
 
-
-#rega
+# 🔹 Сериалайзер регистрации
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -74,3 +78,29 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         Profile.objects.create(user=user)
         return user
+
+# 🔹 Сериалайзер чата (thread)
+class ThreadSerializer(serializers.ModelSerializer):
+    user1 = UserMiniSerializer(read_only=True)
+    user2 = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = Thread
+        fields = ['id', 'user1', 'user2']
+
+# 🔹 Сериалайзер сообщения
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserMiniSerializer()
+
+    class Meta:
+        model = Message
+        fields = ['id', 'thread', 'sender', 'text', 'created_at']
+
+
+class ThreadDisplaySerializer(serializers.ModelSerializer):
+    user1 = UserSerializer(read_only=True)
+    user2 = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Thread
+        fields = ['id', 'user1', 'user2']

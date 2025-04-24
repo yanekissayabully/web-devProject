@@ -1,3 +1,5 @@
+from mailbox import Message
+from threading import Thread
 from django.shortcuts import render
 
 from rest_framework.decorators import api_view, permission_classes
@@ -8,26 +10,26 @@ from rest_framework.views import APIView
 
 from .models import Post, Comment, Profile
 from django.contrib.auth.models import User
-from .serializers import PostSerializer, CommentSerializer, RegisterSerializer, ProfileSerializer
-
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
-from .models import Like
+from .serializers import (
+    PostSerializer, CommentSerializer, RegisterSerializer, ProfileSerializer,
+    ThreadSerializer, MessageSerializer, ThreadDisplaySerializer
+)
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import parser_classes
 from .models import Follow
+from .serializers import ThreadSerializer, MessageSerializer
 
-@method_decorator(csrf_exempt, name='dispatch')
-class RegisterUserView(APIView):
-    permission_classes = [AllowAny]
 
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
 
 @api_view(['GET'])
 def get_posts(request):
@@ -38,6 +40,7 @@ def get_posts(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])  # добавим это
 def create_post(request):
     serializer = PostSerializer(data=request.data)
     if serializer.is_valid():
@@ -77,16 +80,12 @@ def get_post_comments(request, post_id):
 def like_post(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
+        post.likes += 1
+        post.save()
+        return Response({'message': 'Liked!', 'likes': post.likes})
     except Post.DoesNotExist:
-        return Response({'error': 'Пост не найден'}, status=404)
+        return Response({'error': 'Post not found'}, status=404)
 
-    # Проверяем: уже лайкал?
-    if Like.objects.filter(user=request.user, post=post).exists():
-        return Response({'error': 'Ты уже лайкал'}, status=400)
-
-    # Если не лайкал — лайкаем
-    Like.objects.create(user=request.user, post=post)
-    return Response({'message': 'Лайк поставлен'})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -98,15 +97,13 @@ def get_my_profile(request):
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser])
 def update_my_profile(request):
     profile = Profile.objects.get(user=request.user)
-    serializer = ProfileSerializer(profile, data=request.data, partial=True)
+    serializer = ProfileSerializer(profile, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
-
 
 
 @api_view(['GET'])
@@ -119,7 +116,17 @@ def get_profile_by_username(request, username):
     except:
         return Response({'error': 'User not found'}, status=404)
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_follow_counts(request, username):
+    try:
+        user = User.objects.get(username=username)
+        followers = Follow.objects.filter(following=user).count()
+        following = Follow.objects.filter(follower=user).count()
+        return Response({'followers': followers, 'following': following})
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+    
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def follow_user(request, username):
@@ -131,6 +138,7 @@ def follow_user(request, username):
         return Response({'message': f'Подписка на {username} успешна'})
     except User.DoesNotExist:
         return Response({'error': 'Пользователь не найден'}, status=404)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -145,18 +153,6 @@ def unfollow_user(request, username):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_follow_counts(request, username):
-    try:
-        user = User.objects.get(username=username)
-        followers = Follow.objects.filter(following=user).count()
-        following = Follow.objects.filter(follower=user).count()
-        return Response({'followers': followers, 'following': following})
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=404)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def check_follow_status(request, username):
     try:
         user = User.objects.get(username=username)
@@ -164,3 +160,63 @@ def check_follow_status(request, username):
         return Response({'is_following': is_following})
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_or_create_thread(request, username):
+    try:
+        print("request.user:", request.user)
+        print("is_authenticated:", request.user.is_authenticated)
+        print("username:", username)
+
+        user2 = User.objects.get(username=username)
+        user1 = request.user
+
+        if user1 == user2:
+            return Response({'error': 'Нельзя создать чат с самим собой'}, status=400)
+
+        if user1.id > user2.id:
+            user1, user2 = user2, user1
+
+        thread, created = Thread.objects.get_or_create(user1=user1, user2=user2)
+        print("thread:", thread, "created:", created)
+
+        serializer = ThreadDisplaySerializer(thread)
+        return Response(serializer.data)
+    except User.DoesNotExist:
+        return Response({'error': 'Пользователь не найден'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_messages(request, thread_id):
+    try:
+        thread = Thread.objects.get(id=thread_id)
+        if request.user not in [thread.user1, thread.user2]:
+            return Response({'error': 'Not allowed'}, status=403)
+
+        messages = thread.messages.all().order_by('created_at')
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+    except Thread.DoesNotExist:
+        return Response({'error': 'Thread not found'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_message(request, thread_id):
+    try:
+        thread = Thread.objects.get(id=thread_id)
+        if request.user not in [thread.user1, thread.user2]:
+            return Response({'error': 'Not allowed'}, status=403)
+
+        text = request.data.get('text')
+        msg = Message.objects.create(thread=thread, sender=request.user, text=text)
+        serializer = MessageSerializer(msg)
+        return Response(serializer.data, status=201)
+    except Thread.DoesNotExist:
+        return Response({'error': 'Thread not found'}, status=404)

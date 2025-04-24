@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 interface Profile {
   user: {
@@ -17,7 +19,7 @@ interface Profile {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <h2>Профиль</h2>
 
@@ -46,6 +48,8 @@ interface Profile {
         <button (click)="toggleFollow()">
           {{ isFollowing ? 'Отписаться' : 'Подписаться' }}
         </button>
+        <button [routerLink]="['/chat', 'rasik']" style="margin-left: 10px;">💬 Написать</button>
+
       </div>
     </div>
   `
@@ -61,32 +65,34 @@ export class ProfileComponent implements OnInit {
   constructor(
     private api: ApiService,
     private route: ActivatedRoute,
-    private http: HttpClient
+    private http: HttpClient,
+    private router: Router
   ) {}
 
   ngOnInit() {
-    const username = this.route.snapshot.paramMap.get('username');
+    this.route.paramMap.subscribe(params => {
+      const username = params.get('username');
 
-    if (username) {
-      this.api.getProfileByUsername(username).subscribe(data => {
-        this.profile = data as Profile;
-        this.editable = false;
+      if (username) {
+        this.api.getProfileByUsername(username).subscribe((data: any) => {
+          this.profile = data;
+          this.editable = false;
 
-        this.loadFollowStats(username);
-
-        this.api.checkFollow(username).subscribe(res => {
-          this.isFollowing = res.is_following;
+          this.loadFollowStats(data.user.username);
+          this.api.checkFollow(data.user.username).subscribe(res => {
+            this.isFollowing = res.is_following;
+          });
         });
-      });
-    } else {
-      this.api.getMyProfile().subscribe(data => {
-        this.profile = data as Profile;
-        this.editable = true;
+      } else {
+        this.api.getMyProfile().subscribe((data: any) => {
+          this.profile = data;
+          this.editable = true;
 
-        const myUsername = this.profile.user.username;
-        this.loadFollowStats(myUsername);
-      });
-    }
+          const myUsername = data.user.username;
+          this.loadFollowStats(myUsername);
+        });
+      }
+    });
   }
 
   loadFollowStats(username: string) {
@@ -140,4 +146,21 @@ export class ProfileComponent implements OnInit {
       this.loadFollowStats(username);
     });
   }
+
+  startChat() {
+    if (!this.profile) return;
+  
+    const username = this.profile.user.username;
+  
+    this.api.getOrCreateThread(username).subscribe({
+      next: () => {
+        // ЖЁСТКИЙ РЕДИРЕКТ — как будто сам URL открыл
+        window.location.href = `http://localhost:4200/chat/${username}`;
+      },
+      error: () => alert('Не удалось создать чат')
+    });
+  }
+  
+  
+  
 }

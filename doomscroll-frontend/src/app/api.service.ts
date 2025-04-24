@@ -45,6 +45,11 @@ export class ApiService {
     return this.http.post(this.baseUrl + 'posts/create/', { content }, this.getAuthHeaders());
   }
 
+  // 💥 Исправленный метод
+  createPostWithImage(formData: FormData) {
+    return this.http.post(this.baseUrl + 'posts/create/', formData, this.getAuthHeaders());
+  }
+
   getComments(postId: number) {
     return this.http.get<any[]>(this.baseUrl + `posts/${postId}/comments/`, this.getAuthHeaders());
   }
@@ -91,4 +96,22 @@ export class ApiService {
       this.baseUrl + `follow/status/${username}/`, this.getAuthHeaders()
     );
   }
+
+  getOrCreateThread(username: string) {
+    return this.http.post<any>(
+      this.baseUrl + `thread/create-or-get/${username}/`,
+      {},
+      this.getAuthHeaders()
+    );
+  }
+  
+  
+  getMessages(threadId: number) {
+    return this.http.get<any[]>(this.baseUrl + `messages/${threadId}/`, this.getAuthHeaders());
+  }
+  
+  sendMessage(threadId: number, text: string) {
+    return this.http.post<any>(this.baseUrl + `chat/messages/${threadId}/send/`, { text }, this.getAuthHeaders());
+  }
+  
 }
